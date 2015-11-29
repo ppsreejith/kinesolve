@@ -1,0 +1,15 @@
+<div class="container-fluid">
+  <div class="row" style="height:100%">
+    <div id="loops" class="col-sm-4 zerospace">
+      <h3 class="center"> Loops </h3>
+      <div class="loop" ng-repeat="loop in getLoops()" ng-mouseover="highlight(loop)" ng-mouseout="lowlight(loop)">
+	<span ng-repeat="node in loop">
+	  {{node}} -
+	</span>
+	{{loop[0]}}
+      </div>
+    </div>
+    <div kine-visualizer id="visualizer" class="col-sm-8 zerospace">
+    </div>
+  </div>
+</div>

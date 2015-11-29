@@ -1,0 +1,10 @@
+'use strict';
+
+/*
+  service for the visualizing screen
+*/
+angular.module('kinesolveApp')
+  .service('screen', function () {
+      
+      return {};
+  });

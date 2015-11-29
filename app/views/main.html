@@ -1,0 +1,21 @@
+<div class="container-fluid">
+  <div class="row" style="height:100%">
+    <div id="loops" class="col-sm-4 zerospace">
+      <a class="myButton" ng-click="selectLoop()">Solve</a>
+      <h3 class="center"> Loops </h3>
+      <div class="loop" ng-repeat="loop in getLoops()" ng-mouseover="highlight(loop)" ng-mouseout="lowlight(loop)" ng-click="selectedLoop(loop)">
+	<span ng-repeat="node in loop">
+	  {{node}} -
+	</span>
+	{{loop[0]}}
+      </div>
+    </div>
+    <div kine-visualizer id="visualizer" class="col-sm-8 zerospace">
+    </div>
+  </div>
+  <div class="footer bottom-sticker">
+    <div class="container">
+      <p id="status-log">{{status}}</p>
+    </div>
+  </div>
+</div>
