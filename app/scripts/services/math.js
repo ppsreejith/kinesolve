@@ -85,7 +85,7 @@ angular.module('kinesolveApp')
 			if (!isNaN(ans))
 			    vals[j] -= ans;
 		    }
-		    console.log(vals);
+		    console.log(vals); //reached here
 		}
 		return vals;
 	    }
@@ -143,6 +143,7 @@ angular.module('kinesolveApp')
 			return 0;//Math.random();
 		    });
 		    inp_vals = inps.map(to_rad);
+                    console.log(inp_vals);
 		    oth_vals = iter_solutions(jac, oth_ids, oth_vals, inp_ids, inp_vals);
 		}
 	    }
