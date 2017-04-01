@@ -1,0 +1,150 @@
+'use strict';
+
+/*
+  service for the visualizing screen
+*/
+angular.module('kinesolveApp')
+    .factory('math', function () {
+	return (function() {
+	    var _graph = {};
+
+	    function get_ids(loop) {
+		return loop.map(function(elem) {
+		    return "x" + elem.getId();
+		});
+	    }
+
+	    function get_lengths(loop) {
+		var lengths = [], len = loop.length;
+		var x, y, x2, y2, dist;
+		for (var i = 0; i < len; i++) {
+		    x = loop[i].getAttr('x');
+		    y = loop[i].getAttr('y');
+		    x2 = loop[(i + 1) % len].getAttr('x');
+		    y2 = loop[(i + 1) % len].getAttr('y');
+		    dist = Math.pow(Math.pow((x2-x), 2) + Math.pow((y2-y), 2), 0.5);
+		    lengths.push(dist);
+		}
+		return lengths;
+	    }
+
+	    function get_angles(loop) {
+		var angles = [], len = loop.length;
+		var x, y, x2, y2, x3, y3, den1, den2, num, angle;
+		for (var i = 0; i < len; i++) {
+		    x = loop[i].getAttr('x');
+		    y = loop[i].getAttr('y');
+		    x2 = loop[(i + 1) % len].getAttr('x');
+		    y2 = loop[(i + 1) % len].getAttr('y');
+		    x3 = loop[(i + 2) % len].getAttr('x');
+		    y3 = loop[(i + 2) % len].getAttr('y');
+		    den1 = Math.pow(Math.pow((x2-x), 2) + Math.pow((y2-y), 2), 0.5);
+		    den2 = Math.pow(Math.pow((x3-x2), 2) + Math.pow((y3-y2), 2), 0.5);
+		    num = (x3 - x2) * (x2 - x) + (y3 - y2) * (y2 - y);
+		    angle = Math.acos(num / (den1 * den2));
+		    angles.push(angle);
+		}
+		return angles;
+	    }
+
+	    function get_jac_inv_prod(arr, vars) {
+		if (arr.length != vars.length) return null;
+		var N = arr.length;
+		var core = nerdamer.getCore();
+		var functions = nerdamer("matrix("+arr.join(",")+")").symbol;
+		var temp = [];
+		for (var i = 0; i < N; i++) {
+		    temp.push([]);
+		    for (var j = 0; j < N; j++) {
+			temp[i].push( core.Calculus.diff( functions.elements[i][0], vars[j]) );
+		    }
+		}
+		var jacobian = core.Matrix.fromArray(temp);
+		var jacobInv = jacobian.invert();
+		return new core.Expression(jacobInv.multiply(functions));
+	    }
+
+	    function get_map(arr1, arr2) {
+		var temp = {};
+		for (var i in arr1)
+		    temp[arr1[i]] = arr2[i];
+		return temp;
+	    }
+
+	    function iter_solutions(prod, vars, vals, inp_vars, inp_vals) {
+		var temp_prod = prod.evaluate(get_map(inp_vars, inp_vals));
+		window.temps = [temp_prod];
+		window.values = [vals.slice()];
+		for(var i = 0; i<50; i++) {
+		    var temp = temp_prod.evaluate(get_map(vars, vals));
+		    temps.push(temp);
+		    for (var j in vals) {
+			var ans = temp.symbol.elements[j][0];
+			values.push(ans);
+			ans = parseFloat(ans.text());
+			if (!isNaN(ans))
+			    vals[j] -= ans;
+		    }
+		    console.log(vals);
+		}
+		return vals;
+	    }
+
+	    function get_matrix(angle, length) {
+		return nerdamer("matrix([cos("+angle+"), -sin("+angle+"), "+length+"],[sin("+angle+"), cos("+angle+"), 0],[0, 0, 1])").symbol;
+	    }
+
+	    function get_funcs(angles, lengths) {
+		var angle = angles[0];
+		var length = lengths[0];
+		var prod = get_matrix(angle, length);
+		for (var i = 1; i < angles.length; i++) {
+		    angle = angles[i];
+		    length = lengths[i];
+		    prod = prod.multiply(get_matrix(angle, length));
+		}
+		window.gh = prod;
+		var len = prod.elements.length;
+		var elems = prod.elements[0];
+		var funcs = [];
+		funcs.push(elems[0].text() + "-1");
+		for (var i = 1; i < len; i++)
+		    funcs.push(elems[i].text());
+		return funcs;
+	    }
+
+	    function to_rad(x) {
+		return ((x*Math.PI)/180)%(Math.PI*2);
+	    }
+
+	    function to_deg(x) {
+		return (3600 + (x*180)/Math.PI)%(360);
+	    }
+
+	    var angle_ids, angle_vals, lengths, inp_ids, inp_vals, oth_ids, oth_vals, funcs, jac;
+
+	    return {
+		init : function(loop, inputs, others) {
+		    angle_ids = get_ids(loop);
+		    lengths = get_lengths(loop);
+		    angle_vals = get_angles(loop);
+		    inp_ids = get_ids(inputs);
+		    oth_ids = get_ids(others);
+		    
+		    funcs = get_funcs(angle_ids, lengths);
+		    jac = get_jac_inv_prod(funcs, oth_ids);
+		    window.jak = jac;
+		    console.log(angle_ids);
+		    console.log(angle_vals.map(to_deg));
+		    console.log(inp_ids);
+		},
+		solve : function(inps) {
+		    oth_vals = oth_ids.map(function (x) {
+			return 0;//Math.random();
+		    });
+		    inp_vals = inps.map(to_rad);
+		    oth_vals = iter_solutions(jac, oth_ids, oth_vals, inp_ids, inp_vals);
+		}
+	    }
+	}());
+    });

@@ -13,6 +13,7 @@ angular.module('kinesolveApp')
       var currentLine = null;
       var counter = 0;
       var lineCounter = -1;
+      var clearSolving;
       var lineMap = (function() {
 	  var _lineMap = {}
 
@@ -47,6 +48,14 @@ angular.module('kinesolveApp')
 	      layer = new Konva.Layer();
 	  stage.add(layer);
 	  addStageEvents();
+
+	  clearSolving = function() {
+	      var loop = selectedLoop;
+	      selectedLoop = null;
+	      selectInputNode(null);
+	      scope.$emit("loop:lowlight", loop);
+	      scope.$emit("status:default");
+	  }
 
 	  //Add events here
 	  scope.$on('node:add', function(event, pos, id) {
@@ -94,15 +103,10 @@ angular.module('kinesolveApp')
 	      if (!loopSelectMode)
 		  return;
 	      loopSelectMode = !loopSelectMode;
-	      if (isEqual(selectedLoop, loop)) {
-		  selectedLoop = null;
-		  scope.$emit("loop:lowlight", loop);
-		  scope.$emit("status:default");
-	      }
-	      else {
-		  var prevLoop = selectedLoop;
-		  selectedLoop = null;
-		  scope.$emit("loop:lowlight", prevLoop);
+	      var equal = isEqual(selectedLoop, loop);
+	      var prevLoop = selectedLoop;
+	      clearSolving();
+	      if (!equal) {
 		  scope.$emit("loop:highlight", loop);
 		  selectedLoop = loop;
 		  selectInputAngles(scope, loop);
@@ -111,8 +115,8 @@ angular.module('kinesolveApp')
 	  window.trigger = function(event, data1, data2) {
 	      scope.$emit(event, data1, data2);
 	  };
-	  stage.$emit = function(event, data1, data2) {
-	      scope.$emit(event, data1, data2);
+	  stage.$emit = function(event, data1, data2, data3) {
+	      scope.$emit(event, data1, data2, data3);
 	  }
       }
       
@@ -182,9 +186,6 @@ angular.module('kinesolveApp')
 	      removeLine(line);
 	  });
 	  line.on("click", function(evt) {
-	      if (selectedLoop) {
-		  selectInputEdge(line);
-	      }
 	      evt.evt.cancelBubble = true;
 	  });
 	  layer.add(line);
@@ -226,6 +227,11 @@ angular.module('kinesolveApp')
 		  currentLine = null;
 	      }
 	  });
+	  circle.on("click", function(evt) {
+	      if (selectedLoop) {
+		  selectInputNode(circle);
+	      }
+	  });
 	  circle.on("mousedown", function(evt) {
 	      var pos = stage.getPointerPosition();
 	      if (currentLine == null) {
@@ -265,8 +271,6 @@ angular.module('kinesolveApp')
 	  if (loop1.length != loop2.length)
 	      return false;
 	  for (var elem in loop1) {
-	      if (elem == loop1.length - 1)
-		  break;
 	      if (loop1[elem] != loop2[elem])
 		  return false;
 	  }
@@ -274,14 +278,30 @@ angular.module('kinesolveApp')
       }
 
       function selectInputAngles(scope, loop) {
-	  var _msg = "To determine input angles, select two adjacent sides";
+	  var _msg = "Select a node to determine input angle";
 	  scope.$emit("status:changed", _msg);
       }
 
-      var selectInputEdge = (function() {
-	  var _nodes = {};
+      var selectInputNode = (function() {
+	  var _node_ids = {};
+	  var nodes = [];
 
-	  return function(line) {
+	  return function(node) {
+	      if (!selectedLoop) {
+		  _node_ids = {};
+		  nodes = [];
+		  return;
+	      }
+	      var size = selectedLoop.length - 3;
+	      if (Object.keys(_node_ids).length == size)
+		  anglesSelected(nodes, _node_ids);
+	      if (!_node_ids[node.getId()]) {
+		  _node_ids[node.getId()] = true;
+		  nodes.push(node);
+	      }
+	      if (Object.keys(_node_ids).length == size)
+		  anglesSelected(nodes, _node_ids);
+	      /*
 	      var length = Object.keys(_nodes).length;
 	      if (length == 3) return; // remove when adding more input angles
 	      if (length != 0 && (!_nodes[line.from_id] && !_nodes[line.to_id]))
@@ -291,11 +311,20 @@ angular.module('kinesolveApp')
 	      console.log(_nodes);
 	      if (Object.keys(_nodes).length == 3)
 		  anglesSelected(_nodes);
+*/
 	  };
       }());
 
-      function anglesSelected(nodes) {
-	  console.log("selected");
+      function anglesSelected(inputs, verify) {
+	  var layer = inputs[0].getLayer();
+	  var loop = selectedLoop.map(function(x) {
+	      return layer.findOne("#"+x);
+	  });
+	  var others = loop.filter(function(x) {
+	      return !verify[x.getId()];
+	  });
+	  clearSolving();
+	  layer.getStage().$emit("simulate", loop, inputs, others);
       }
       
       return {link:link};

@@ -8,7 +8,7 @@
  * Controller of the kinesolveApp
  */
 angular.module('kinesolveApp')
-  .controller('MainCtrl',['$scope', 'graph', function ($scope, graph) {
+  .controller('MainCtrl',['$scope', 'graph', 'math', function ($scope, graph, math) {
 
       var _def_msg = "Developed by Sreejith Pp";
       $scope.status = _def_msg;
@@ -34,6 +34,13 @@ angular.module('kinesolveApp')
       $scope.$on("edge:removed", function(event, from, to) {
 	  graph.removeEdge(from, to);
 	  $scope.$apply();
+      });
+      $scope.$on("simulate", function(event, loop, inputs, others) {
+	  console.log(JSON.stringify(loop));
+	  console.log(JSON.stringify(inputs));
+	  console.log(JSON.stringify(others));
+	  math.init(loop, inputs, others);
+	  window.test = math.solve;
       });
       $scope.getLoops = graph.getLoops;
       $scope.highlight = function(loop) {
